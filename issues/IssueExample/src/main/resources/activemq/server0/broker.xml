@@ -7,128 +7,144 @@
 
 
 
-    <core xmlns="urn:activemq:core">
-        <name>server0</name>
-        <persistence-enabled>true</persistence-enabled>
-        <journal-type>NIO</journal-type>
-        <bindings-directory>./data/bindings</bindings-directory>
+	<core xmlns="urn:activemq:core">
+		<name>server0</name>
+		<persistence-enabled>true</persistence-enabled>
+		<journal-type>NIO</journal-type>
+		<bindings-directory>./data/bindings</bindings-directory>
 
-        <journal-directory>./data/journal</journal-directory>
+		<journal-directory>./data/journal</journal-directory>
 
-        <large-messages-directory>./data/largemessages</large-messages-directory>
+		<large-messages-directory>./data/largemessages</large-messages-directory>
 
-        <paging-directory>./data/paging</paging-directory>
+		<paging-directory>./data/paging</paging-directory>
 
-        <!-- Acceptors -->
-        <acceptors>
-            <acceptor name="invm-acceptor">vm://0</acceptor>
-            <acceptor name="artemis">tcp://0.0.0.0:61616</acceptor>
-            <acceptor name="ssl">tcp://0.0.0.0:61617</acceptor>
-        </acceptors>
+		<!-- Acceptors -->
+		<acceptors>
+			<acceptor name="invm-acceptor">vm://0</acceptor>
+			<acceptor name="artemis">tcp://0.0.0.0:61616</acceptor>
+			<acceptor name="ssl">tcp://0.0.0.0:61617</acceptor>
+		</acceptors>
 
-        <connectors>
-            <connector name="invm-connector">vm://0</connector>
-            <connector name="netty-connector">tcp://localhost:61616</connector>
-            <connector name="server1-connector">tcp://localhost:61618</connector>
-        </connectors>
-        
-        <cluster-connections>
-            <cluster-connection name="my-cluster">
-                <connector-ref>netty-connector</connector-ref>
-                <retry-interval>500</retry-interval>
-                <reconnect-attempts>5</reconnect-attempts>
-                <use-duplicate-detection>true</use-duplicate-detection>
-                <message-load-balancing>ON_DEMAND</message-load-balancing>
-                <max-hops>1</max-hops>
-                <static-connectors>
-                    <connector-ref>server1-connector</connector-ref>
-                </static-connectors>
-            </cluster-connection>
-        </cluster-connections>
+		<connectors>
+			<connector name="invm-connector">vm://0</connector>
+			<connector name="netty-connector">tcp://localhost:61616</connector>
+			<connector name="server1-connector">tcp://localhost:61618</connector>
+		</connectors>
+		<!-- Other config -->
+		<cluster-connections>
+			<cluster-connection name="my-cluster">
+				<connector-ref>netty-connector</connector-ref>
+				<retry-interval>500</retry-interval>
+				<reconnect-attempts>5</reconnect-attempts>
+				<use-duplicate-detection>true</use-duplicate-detection>
+				<message-load-balancing>ON_DEMAND</message-load-balancing>
+				<max-hops>1</max-hops>
+				<discovery-group-ref discovery-group-name="my-discovery-group"/>
+			</cluster-connection>
+		</cluster-connections>
 
-        <ha-policy>
-            <replication>
-                <colocated>
-                    <backup-request-retry-interval>5000</backup-request-retry-interval>
-                    <request-backup>true</request-backup>
-                    <backup-port-offset>100</backup-port-offset>
-                    <excludes>
-                        <connector-ref>invm-connector</connector-ref>
-                        <connector-ref>netty-connector</connector-ref>
-                    </excludes>
-                    <master>
-                        <check-for-live-server>true</check-for-live-server>
-                    </master>
-                    <slave>
-                        <scale-down />
-                    </slave>
-                </colocated>
-            </replication>
-        </ha-policy>
+		<broadcast-groups>
+			<broadcast-group name="my-broadcast-group">
+				<group-address>${udp-address:231.7.7.7}</group-address>
+				<group-port>9876</group-port>
+				<broadcast-period>100</broadcast-period>
+				<connector-ref>netty-connector</connector-ref>
+			</broadcast-group>
+		</broadcast-groups>
 
-        <security-settings>
-            <!--security for example queue -->
-            <security-setting match="#">
-                <permission roles="guest" type="createDurableQueue" />
-                <permission roles="guest" type="deleteDurableQueue" />
-                <permission roles="guest" type="createNonDurableQueue" />
-                <permission roles="guest" type="deleteNonDurableQueue" />
-                <permission roles="guest" type="consume" />
-                <permission roles="guest" type="send" />
-            </security-setting>
-        </security-settings>
+		<discovery-groups>
+			<discovery-group name="my-discovery-group">
+				<group-address>${udp-address:231.7.7.7}</group-address>
+				<group-port>9876</group-port>
+				<refresh-timeout>10000</refresh-timeout>
+			</discovery-group>
+		</discovery-groups>
 
-        <address-settings>
-            <address-setting match="activemq.management#">
-                <dead-letter-address>DLQ</dead-letter-address>
-                <expiry-address>ExpiryQueue</expiry-address>
-                <redelivery-delay>0</redelivery-delay>
-                <!-- with -1 only the global-max-size is in use for limiting -->
-                <max-size-bytes>-1</max-size-bytes>
-                <message-counter-history-day-limit>10</message-counter-history-day-limit>
-                <address-full-policy>PAGE</address-full-policy>
-            </address-setting>
-            <address-setting match="#">
-                <dead-letter-address>DLQ</dead-letter-address>
-                <expiry-address>ExpiryQueue</expiry-address>
-                <redelivery-delay>0</redelivery-delay>
-                <max-size-bytes>-1</max-size-bytes>
-                <message-counter-history-day-limit>10</message-counter-history-day-limit>
-                <address-full-policy>PAGE</address-full-policy>
-                <redistribution-delay>1000</redistribution-delay>
-            </address-setting>
-            <address-setting match="DLQ">
-                <!-- 100 * 1024 * 1024 -> 100MB -->
-                <max-size-bytes>104857600</max-size-bytes>
-                <expiry-delay>15000</expiry-delay>
-                <expiry-address />
-            </address-setting>
-            <address-setting match="ExampleQueue">
-                <redelivery-delay-multiplier>1.0</redelivery-delay-multiplier>
-                <redelivery-delay>0</redelivery-delay>
-                <max-redelivery-delay>10</max-redelivery-delay>
-                <max-delivery-attempts>1</max-delivery-attempts>
-                <max-size-bytes>104857600</max-size-bytes>
-                <expiry-address />
-            </address-setting>
-        </address-settings>
+		<ha-policy>
+			<replication>
+				<colocated>
+					<backup-request-retry-interval>5000</backup-request-retry-interval>
+					<max-backups>3</max-backups>
+					<request-backup>true</request-backup>
+					<backup-port-offset>100</backup-port-offset>
+					<excludes>
+						<connector-ref>netty-connector</connector-ref>
+						<connector-ref>server1-connector</connector-ref>
+					</excludes>
+					<master>
+						<check-for-live-server>true</check-for-live-server>
+					</master>
+					<slave>
+						<scale-down />
+					</slave>
+				</colocated>
+			</replication>
+		</ha-policy>
 
-        <addresses>
-            <address name="DLQ">
-                <anycast>
-                    <queue name="DLQ" />
-                </anycast>
-            </address>
-            <address name="ExampleQueue">
-                <anycast>
-                    <queue name="ExampleQueue" />
-                </anycast>
-            </address>
-            <address name="ExpiryQueue">
-                <anycast>
-                    <queue name="ExpiryQueue" />
-                </anycast>
-            </address>
-        </addresses>
-    </core>
+		<security-settings>
+			<!--security for example queue -->
+			<security-setting match="#">
+				<permission roles="guest" type="createDurableQueue" />
+				<permission roles="guest" type="deleteDurableQueue" />
+				<permission roles="guest" type="createNonDurableQueue" />
+				<permission roles="guest" type="deleteNonDurableQueue" />
+				<permission roles="guest" type="consume" />
+				<permission roles="guest" type="send" />
+			</security-setting>
+		</security-settings>
+
+		<address-settings>
+			<address-setting match="activemq.management#">
+				<dead-letter-address>DLQ</dead-letter-address>
+				<expiry-address>ExpiryQueue</expiry-address>
+				<redelivery-delay>0</redelivery-delay>
+				<!-- with -1 only the global-max-size is in use for limiting -->
+				<max-size-bytes>-1</max-size-bytes>
+				<message-counter-history-day-limit>10</message-counter-history-day-limit>
+				<address-full-policy>PAGE</address-full-policy>
+			</address-setting>
+			<address-setting match="#">
+				<dead-letter-address>DLQ</dead-letter-address>
+				<expiry-address>ExpiryQueue</expiry-address>
+				<redelivery-delay>0</redelivery-delay>
+				<max-size-bytes>-1</max-size-bytes>
+				<message-counter-history-day-limit>10</message-counter-history-day-limit>
+				<address-full-policy>PAGE</address-full-policy>
+				<redistribution-delay>1000</redistribution-delay>
+			</address-setting>
+			<address-setting match="DLQ">
+				<!-- 100 * 1024 * 1024 -> 100MB -->
+				<max-size-bytes>104857600</max-size-bytes>
+				<!-- 1000 * 60 * 60 -> 1h -->
+				<expiry-delay>3600000</expiry-delay>
+				<expiry-address />
+			</address-setting>
+			<address-setting match="exampleQueue">
+				<redelivery-delay-multiplier>1.0</redelivery-delay-multiplier>
+				<redelivery-delay>0</redelivery-delay>
+				<max-redelivery-delay>10</max-redelivery-delay>
+				<max-delivery-attempts>3</max-delivery-attempts>
+				<max-size-bytes>104857600</max-size-bytes>
+			</address-setting>
+		</address-settings>
+
+		<addresses>
+			<address name="DLQ">
+				<anycast>
+					<queue name="DLQ" />
+				</anycast>
+			</address>
+			<address name="exampleQueue">
+				<anycast>
+					<queue name="exampleQueue" />
+				</anycast>
+			</address>
+			<address name="ecpiryQueue">
+				<anycast>
+					<queue name="ecpiryQueue" />
+				</anycast>
+			</address>
+		</addresses>
+	</core>
 </configuration>
